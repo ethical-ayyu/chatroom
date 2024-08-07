@@ -1,45 +1,46 @@
 // app.js
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginContainer = document.getElementById('login-container');
     const chatContainer = document.getElementById('chat-container');
-    const loginUsername = document.getElementById('login-username');
     const loginButton = document.getElementById('login-button');
-    const chatWindow = document.getElementById('chat-window');
-    const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
-    let username = '';
-    const socket = new WebSocket('ws://localhost:8080');
+    const loginUsername = document.getElementById('login-username');
+    const messageInput = document.getElementById('message-input');
+    const chatWindow = document.getElementById('chat-window');
+
+    let username = null;
+    let socket = new WebSocket('ws://localhost:8080');
 
     loginButton.addEventListener('click', () => {
         username = loginUsername.value.trim();
         if (username) {
             loginContainer.style.display = 'none';
             chatContainer.style.display = 'flex';
-            appendMessage('System', 'You joined the chat as ' + username);
+            socket.send(JSON.stringify({ username, message: 'has joined the chat.', timestamp: new Date().toLocaleTimeString() }));
         }
     });
 
     sendButton.addEventListener('click', () => {
-        const message = messageInput.value;
-        if (message.trim() !== '' && username) {
-            const timestamp = new Date().toLocaleTimeString();
-            const fullMessage = `${timestamp} - ${username}: ${message}`;
-            appendMessage('You', fullMessage);
-            socket.send(JSON.stringify({ username, message, timestamp }));
+        const userMessage = messageInput.value.trim();
+        if (userMessage) {
+            socket.send(JSON.stringify({ username, message: userMessage, timestamp: new Date().toLocaleTimeString() }));
             messageInput.value = '';
         }
     });
 
     socket.addEventListener('message', event => {
-        const data = JSON.parse(event.data);
-        appendMessage(data.username, `${data.timestamp} - ${data.message}`);
-    });
-
-    function appendMessage(sender, message) {
+        const { username, message, timestamp } = JSON.parse(event.data);
         const messageElement = document.createElement('div');
         messageElement.classList.add('message');
-        messageElement.innerHTML = `<strong>${sender}:</strong> ${message}`;
+        messageElement.textContent = `${timestamp} ${username}: ${message}`;
         chatWindow.appendChild(messageElement);
         chatWindow.scrollTop = chatWindow.scrollHeight;
-    }
+    });
+
+    messageInput.addEventListener('keyup', event => {
+        if (event.key === 'Enter') {
+            sendButton.click();
+        }
+    });
 });
